@@ -27,17 +27,15 @@ jobs:
 
       - name: Prepare Extension
         run: |
-          cd ClipboardBridge_Final
           fast migrate ai2 .
 
       - name: Build AIX
         run: |
-          cd ClipboardBridge_Final
           fast sync build
 
       - name: Upload AIX
         uses: actions/upload-artifact@v4
         with:
           name: ClipboardBridge-AIX
-          path: ClipboardBridge_Final/out/*.aix
+          path: out/*.aix
           if-no-files-found: error
