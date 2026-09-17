@@ -28,8 +28,6 @@ jobs:
 
           mkdir -p "$HOME/Fast"
 
-          echo "===== GET FAST RELEASE ====="
-
           RELEASE_JSON=$(curl -fsSL \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/jewelshkjony/fast-cli/releases/latest)
@@ -42,9 +40,7 @@ jobs:
           with open("/tmp/fast-release.json") as f:
               data = json.load(f)
 
-          assets = data.get("assets", [])
-
-          for asset in assets:
+          for asset in data.get("assets", []):
               name = asset.get("name", "")
               url = asset.get("browser_download_url", "")
 
@@ -52,29 +48,24 @@ jobs:
                   print(url)
                   break
           else:
-              raise SystemExit("No ZIP asset found in FAST release")
+              raise SystemExit("No ZIP asset found")
           PY
           )
 
-          echo "FAST URL:"
-          echo "$FAST_URL"
+          echo "FAST URL: $FAST_URL"
 
           curl -fL "$FAST_URL" -o "$HOME/Fast/Fast.zip"
 
           unzip -o "$HOME/Fast/Fast.zip" -d "$HOME/Fast"
 
-          echo "===== FAST FILES ====="
-          find "$HOME/Fast" -maxdepth 3 -type f -print
-
           FAST_JAR=$(find "$HOME/Fast" -type f -name "fast.jar" | head -n 1)
 
           if [ -z "$FAST_JAR" ]; then
-            echo "ERROR: fast.jar was not found!"
+            echo "ERROR: fast.jar not found!"
             exit 1
           fi
 
-          echo "FAST JAR:"
-          ls -lh "$FAST_JAR"
+          echo "FAST JAR: $FAST_JAR"
 
       - name: Extract Extension
         shell: bash
@@ -83,7 +74,7 @@ jobs:
 
           unzip -o ClipboardBridge_v2_Final.zip
 
-          echo "===== EXTRACTED PROJECT ====="
+          echo "===== PROJECT ====="
           find ClipboardBridge_Final -maxdepth 6 -type f -print | sort
 
       - name: Prepare FAST Project
@@ -103,13 +94,12 @@ jobs:
             mv res src/res
           fi
 
-          echo "===== ADD PACKAGE NAME ====="
+          echo "===== FIX MANIFEST ====="
 
           python3 - <<'PY'
           from pathlib import Path
 
           manifest = Path("src/AndroidManifest.xml")
-
           text = manifest.read_text()
 
           package_name = "com.example.clipboardbridge"
@@ -126,6 +116,33 @@ jobs:
           print(manifest.read_text())
           PY
 
+          echo "===== FIX JAVA ANNOTATION ====="
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          java = Path("src/com/example/clipboardbridge/ClipboardBridge.java")
+          text = java.read_text()
+
+          # FAST 6.4+ removed SimpleObject from AndroidRuntime.jar.
+          # Replace old annotation with FAST's Component annotation.
+
+          text = text.replace(
+              "import com.google.appinventor.components.annotations.SimpleObject;",
+              "import com.google.appinventor.components.annotations.Component;"
+          )
+
+          text = text.replace(
+              "@SimpleObject(external = true)",
+              "@Component(external = true)"
+          )
+
+          java.write_text(text)
+
+          print("===== JAVA SOURCE AFTER FIX =====")
+          print(java.read_text())
+          PY
+
           cat > fast.yml <<'EOF'
           author: FAST
           min_sdk: 14
@@ -136,11 +153,8 @@ jobs:
           gen_docs: false
           EOF
 
-          echo "===== FAST PROJECT ====="
+          echo "===== FINAL PROJECT ====="
           find . -maxdepth 7 -type f -print | sort
-
-          echo "===== FAST CONFIG ====="
-          cat fast.yml
 
       - name: Sync Extension
         shell: bash
@@ -163,17 +177,13 @@ jobs:
       - name: Find AIX
         shell: bash
         run: |
-          echo "===== SEARCHING FOR AIX ====="
+          echo "===== AIX FILES ====="
 
           find . -type f -name "*.aix" -print
 
-          echo "===== OUT DIRECTORY ====="
+          echo "===== OUT ====="
 
-          if [ -d ClipboardBridge_Final/out ]; then
-            find ClipboardBridge_Final/out -maxdepth 3 -type f -print
-          else
-            echo "out directory not found"
-          fi
+          find ClipboardBridge_Final/out -maxdepth 3 -type f -print 2>/dev/null || true
 
       - name: Check AIX
         shell: bash
