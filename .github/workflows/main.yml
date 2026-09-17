@@ -21,7 +21,7 @@ jobs:
 
 
       # =========================================
-      # 2. JAVA
+      # 2. SETUP JAVA
       # =========================================
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -40,7 +40,9 @@ jobs:
 
           mkdir -p "$HOME/Fast"
 
-          echo "===== GET FAST RELEASE ====="
+          echo "========================================="
+          echo "GET FAST RELEASE"
+          echo "========================================="
 
           RELEASE_JSON=$(curl -fsSL \
             -H "Accept: application/vnd.github+json" \
@@ -71,17 +73,23 @@ jobs:
           echo "FAST URL:"
           echo "$FAST_URL"
 
-          echo "===== DOWNLOAD FAST ====="
+          echo "========================================="
+          echo "DOWNLOAD FAST"
+          echo "========================================="
 
           curl -fL "$FAST_URL" \
             -o "$HOME/Fast/Fast.zip"
 
-          echo "===== EXTRACT FAST ====="
+          echo "========================================="
+          echo "EXTRACT FAST"
+          echo "========================================="
 
           unzip -o "$HOME/Fast/Fast.zip" \
             -d "$HOME/Fast"
 
-          echo "===== FIND FAST JAR ====="
+          echo "========================================="
+          echo "FIND FAST JAR"
+          echo "========================================="
 
           FAST_JAR=$(find "$HOME/Fast" \
             -type f \
@@ -105,11 +113,15 @@ jobs:
         run: |
           set -e
 
-          echo "===== EXTRACT EXTENSION ====="
+          echo "========================================="
+          echo "EXTRACT CLIPBOARD EXTENSION"
+          echo "========================================="
 
           unzip -o ClipboardBridge_v2_Final.zip
 
-          echo "===== PROJECT FILES ====="
+          echo "========================================="
+          echo "PROJECT FILES"
+          echo "========================================="
 
           find ClipboardBridge_Final \
             -maxdepth 8 \
@@ -128,23 +140,54 @@ jobs:
 
           cd ClipboardBridge_Final
 
-          echo "===== CREATE DIRECTORIES ====="
+          echo "========================================="
+          echo "CREATE DIRECTORIES"
+          echo "========================================="
 
           mkdir -p src
           mkdir -p assets
+          mkdir -p assets/images
 
 
-          # -----------------------------------------
-          # Move manifest
-          # -----------------------------------------
+          # =========================================
+          # CREATE EXTENSION ICON
+          # =========================================
+          echo "========================================="
+          echo "CREATE EXTENSION ICON"
+          echo "========================================="
+
+          echo "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=" \
+            | base64 -d \
+            > assets/images/extension.png
+
+          if [ ! -f assets/images/extension.png ]; then
+            echo "ERROR: extension.png was not created!"
+            exit 1
+          fi
+
+          echo "ICON CREATED:"
+          ls -lh assets/images/extension.png
+
+
+          # =========================================
+          # MOVE MANIFEST
+          # =========================================
+          echo "========================================="
+          echo "MOVE ANDROID MANIFEST"
+          echo "========================================="
+
           if [ -f AndroidManifest.xml ]; then
             mv AndroidManifest.xml src/AndroidManifest.xml
           fi
 
 
-          # -----------------------------------------
-          # Move resources
-          # -----------------------------------------
+          # =========================================
+          # MOVE RESOURCES
+          # =========================================
+          echo "========================================="
+          echo "MOVE RESOURCES"
+          echo "========================================="
+
           if [ -d res ]; then
             mv res src/res
           fi
@@ -153,7 +196,9 @@ jobs:
           # =========================================
           # FIX MANIFEST
           # =========================================
-          echo "===== FIX MANIFEST ====="
+          echo "========================================="
+          echo "FIX ANDROID MANIFEST"
+          echo "========================================="
 
           python3 - <<'PY'
           from pathlib import Path
@@ -186,9 +231,11 @@ jobs:
 
 
           # =========================================
-          # FIX JAVA
+          # FIX JAVA ANNOTATIONS
           # =========================================
-          echo "===== FIX JAVA ANNOTATION ====="
+          echo "========================================="
+          echo "FIX JAVA ANNOTATIONS"
+          echo "========================================="
 
           python3 - <<'PY'
           from pathlib import Path
@@ -226,7 +273,7 @@ jobs:
           )
 
 
-          # Remove Component annotation from previous attempt
+          # Remove invalid Component annotation
           text = text.replace(
               "@Component(external = true)",
               ""
@@ -243,7 +290,9 @@ jobs:
           # =========================================
           # CREATE FAST.YML
           # =========================================
-          echo "===== CREATE FAST.YML ====="
+          echo "========================================="
+          echo "CREATE FAST.YML"
+          echo "========================================="
 
           cat > fast.yml <<'EOF'
           author: FAST
@@ -255,19 +304,29 @@ jobs:
           gen_docs: false
           EOF
 
-
-          # =========================================
-          # SHOW ASSETS
-          # =========================================
-          echo "===== ASSETS DIRECTORY ====="
-
-          ls -la assets
+          echo "===== FAST.YML ====="
+          cat fast.yml
 
 
           # =========================================
-          # SHOW FINAL PROJECT
+          # CHECK ASSETS
           # =========================================
-          echo "===== FINAL FAST PROJECT ====="
+          echo "========================================="
+          echo "CHECK ASSETS"
+          echo "========================================="
+
+          find assets \
+            -type f \
+            -print \
+            | sort
+
+
+          # =========================================
+          # FINAL PROJECT
+          # =========================================
+          echo "========================================="
+          echo "FINAL FAST PROJECT"
+          echo "========================================="
 
           find . \
             -maxdepth 8 \
@@ -277,7 +336,7 @@ jobs:
 
 
       # =========================================
-      # 6. SYNC
+      # 6. SYNC EXTENSION
       # =========================================
       - name: Sync Extension
         shell: bash
@@ -296,6 +355,10 @@ jobs:
             exit 1
           fi
 
+          echo "========================================="
+          echo "FAST SYNC"
+          echo "========================================="
+
           echo "Using FAST:"
           echo "$FAST_JAR"
 
@@ -303,7 +366,7 @@ jobs:
 
 
       # =========================================
-      # 7. BUILD
+      # 7. BUILD EXTENSION
       # =========================================
       - name: Build Extension
         shell: bash
@@ -322,11 +385,15 @@ jobs:
             exit 1
           fi
 
-          echo "===== FAST BUILD ====="
+          echo "========================================="
+          echo "FAST BUILD"
+          echo "========================================="
 
           java -jar "$FAST_JAR" build 2>&1 | tee build.log
 
-          echo "===== CHECK BUILD RESULT ====="
+          echo "========================================="
+          echo "CHECK BUILD RESULT"
+          echo "========================================="
 
           if grep -q "BUILD FAILED" build.log; then
             echo "ERROR: FAST BUILD FAILED!"
@@ -347,22 +414,30 @@ jobs:
       - name: Find AIX
         shell: bash
         run: |
-          echo "===== ALL AIX FILES ====="
+          echo "========================================="
+          echo "SEARCH FOR AIX"
+          echo "========================================="
 
           find . \
             -type f \
             -name "*.aix" \
             -print
 
-          echo "===== OUT DIRECTORY ====="
+          echo "========================================="
+          echo "OUT DIRECTORY"
+          echo "========================================="
 
           if [ -d ClipboardBridge_Final/out ]; then
+
             find ClipboardBridge_Final/out \
               -maxdepth 5 \
               -type f \
               -print
+
           else
+
             echo "out directory not found."
+
           fi
 
 
@@ -374,7 +449,9 @@ jobs:
         run: |
           set -e
 
-          echo "===== CHECK AIX ====="
+          echo "========================================="
+          echo "CHECK AIX"
+          echo "========================================="
 
           AIX_COUNT=$(find . \
             -type f \
@@ -384,9 +461,13 @@ jobs:
           echo "AIX COUNT: $AIX_COUNT"
 
           if [ "$AIX_COUNT" -eq 0 ]; then
+
             echo "ERROR: No AIX file was created!"
+
             echo ""
-            echo "===== BUILD LOG ====="
+            echo "========================================="
+            echo "BUILD LOG"
+            echo "========================================="
 
             if [ -f ClipboardBridge_Final/build.log ]; then
               cat ClipboardBridge_Final/build.log
@@ -395,7 +476,9 @@ jobs:
             exit 1
           fi
 
-          echo "SUCCESS: AIX file created!"
+          echo ""
+          echo "SUCCESS!"
+          echo "AIX file was created."
 
 
       # =========================================
