@@ -62,7 +62,9 @@ jobs:
                   print(url)
                   break
           else:
-              raise SystemExit("ERROR: No ZIP asset found in FAST release")
+              raise SystemExit(
+                  "ERROR: No ZIP asset found in FAST release"
+              )
           PY
           )
 
@@ -96,7 +98,7 @@ jobs:
 
 
       # =========================================
-      # 4. EXTRACT EXTENSION ZIP
+      # 4. EXTRACT EXTENSION
       # =========================================
       - name: Extract Extension
         shell: bash
@@ -126,9 +128,10 @@ jobs:
 
           cd ClipboardBridge_Final
 
-          echo "===== CREATE SOURCE DIRECTORY ====="
+          echo "===== CREATE DIRECTORIES ====="
 
           mkdir -p src
+          mkdir -p assets
 
 
           # -----------------------------------------
@@ -148,7 +151,7 @@ jobs:
 
 
           # =========================================
-          # FIX ANDROID MANIFEST
+          # FIX MANIFEST
           # =========================================
           echo "===== FIX MANIFEST ====="
 
@@ -158,7 +161,9 @@ jobs:
           manifest = Path("src/AndroidManifest.xml")
 
           if not manifest.exists():
-              raise SystemExit("ERROR: AndroidManifest.xml not found!")
+              raise SystemExit(
+                  "ERROR: AndroidManifest.xml not found!"
+              )
 
           text = manifest.read_text()
 
@@ -167,7 +172,9 @@ jobs:
           if "package=" not in text:
               text = text.replace(
                   "<manifest",
-                  '<manifest package="' + package_name + '"',
+                  '<manifest package="' +
+                  package_name +
+                  '"',
                   1
               )
 
@@ -179,7 +186,7 @@ jobs:
 
 
           # =========================================
-          # FIX JAVA SOURCE
+          # FIX JAVA
           # =========================================
           echo "===== FIX JAVA ANNOTATION ====="
 
@@ -198,38 +205,28 @@ jobs:
           text = java.read_text()
 
 
-          # -----------------------------------------
           # Remove old SimpleObject import
-          # -----------------------------------------
           text = text.replace(
               "import com.google.appinventor.components.annotations.SimpleObject;",
               ""
           )
 
 
-          # -----------------------------------------
           # Remove old SimpleObject annotation
-          # -----------------------------------------
           text = text.replace(
               "@SimpleObject(external = true)",
               ""
           )
 
 
-          # -----------------------------------------
-          # Remove Component import if previous
-          # workflow inserted it
-          # -----------------------------------------
+          # Remove Component import from previous attempt
           text = text.replace(
               "import com.google.appinventor.components.annotations.Component;",
               ""
           )
 
 
-          # -----------------------------------------
-          # Remove Component annotation if previous
-          # workflow inserted it
-          # -----------------------------------------
+          # Remove Component annotation from previous attempt
           text = text.replace(
               "@Component(external = true)",
               ""
@@ -244,7 +241,7 @@ jobs:
 
 
           # =========================================
-          # CREATE FAST CONFIG
+          # CREATE FAST.YML
           # =========================================
           echo "===== CREATE FAST.YML ====="
 
@@ -260,6 +257,14 @@ jobs:
 
 
           # =========================================
+          # SHOW ASSETS
+          # =========================================
+          echo "===== ASSETS DIRECTORY ====="
+
+          ls -la assets
+
+
+          # =========================================
           # SHOW FINAL PROJECT
           # =========================================
           echo "===== FINAL FAST PROJECT ====="
@@ -272,7 +277,7 @@ jobs:
 
 
       # =========================================
-      # 6. SYNC EXTENSION
+      # 6. SYNC
       # =========================================
       - name: Sync Extension
         shell: bash
@@ -298,7 +303,7 @@ jobs:
 
 
       # =========================================
-      # 7. BUILD EXTENSION
+      # 7. BUILD
       # =========================================
       - name: Build Extension
         shell: bash
