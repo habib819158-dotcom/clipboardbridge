@@ -23,19 +23,24 @@ jobs:
       - name: Install FAST
         run: |
           curl -fsSL https://raw.githubusercontent.com/jewelshkjony/fast-cli/main/scripts/install/install.sh | bash
-          echo "$HOME/.fast/bin" >> "$GITHUB_PATH"
+
+      - name: Extract Extension
+        run: |
+          unzip -o ClipboardBridge_v2_Final.zip
 
       - name: Prepare Extension
         run: |
-          fast migrate ai2 .
+          cd ClipboardBridge_Final
+          java -jar "$HOME/Fast/fast.jar" migrate ai2 .
 
       - name: Build AIX
         run: |
-          fast sync build
+          cd ClipboardBridge_Final
+          java -jar "$HOME/Fast/fast.jar" sync build
 
       - name: Upload AIX
         uses: actions/upload-artifact@v4
         with:
           name: ClipboardBridge-AIX
-          path: out/*.aix
+          path: ClipboardBridge_Final/out/*.aix
           if-no-files-found: error
