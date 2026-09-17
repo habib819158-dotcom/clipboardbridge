@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+
   workflow_dispatch:
 
 jobs:
@@ -12,21 +13,34 @@ jobs:
 
     steps:
 
+      # =========================================
+      # 1. CHECKOUT
+      # =========================================
       - name: Checkout
         uses: actions/checkout@v4
 
+
+      # =========================================
+      # 2. JAVA
+      # =========================================
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+
+      # =========================================
+      # 3. INSTALL FAST
+      # =========================================
       - name: Install FAST
         shell: bash
         run: |
           set -e
 
           mkdir -p "$HOME/Fast"
+
+          echo "===== GET FAST RELEASE ====="
 
           RELEASE_JSON=$(curl -fsSL \
             -H "Accept: application/vnd.github+json" \
@@ -37,7 +51,7 @@ jobs:
           FAST_URL=$(python3 - <<'PY'
           import json
 
-          with open("/tmp/fast-release.json") as f:
+          with open("/tmp/fast-release.json", "r") as f:
               data = json.load(f)
 
           for asset in data.get("assets", []):
@@ -48,35 +62,63 @@ jobs:
                   print(url)
                   break
           else:
-              raise SystemExit("No ZIP asset found")
+              raise SystemExit("ERROR: No ZIP asset found in FAST release")
           PY
           )
 
-          echo "FAST URL: $FAST_URL"
+          echo "FAST URL:"
+          echo "$FAST_URL"
 
-          curl -fL "$FAST_URL" -o "$HOME/Fast/Fast.zip"
+          echo "===== DOWNLOAD FAST ====="
 
-          unzip -o "$HOME/Fast/Fast.zip" -d "$HOME/Fast"
+          curl -fL "$FAST_URL" \
+            -o "$HOME/Fast/Fast.zip"
 
-          FAST_JAR=$(find "$HOME/Fast" -type f -name "fast.jar" | head -n 1)
+          echo "===== EXTRACT FAST ====="
+
+          unzip -o "$HOME/Fast/Fast.zip" \
+            -d "$HOME/Fast"
+
+          echo "===== FIND FAST JAR ====="
+
+          FAST_JAR=$(find "$HOME/Fast" \
+            -type f \
+            -name "fast.jar" \
+            | head -n 1)
 
           if [ -z "$FAST_JAR" ]; then
             echo "ERROR: fast.jar not found!"
             exit 1
           fi
 
-          echo "FAST JAR: $FAST_JAR"
+          echo "FAST JAR:"
+          echo "$FAST_JAR"
 
+
+      # =========================================
+      # 4. EXTRACT EXTENSION ZIP
+      # =========================================
       - name: Extract Extension
         shell: bash
         run: |
           set -e
 
+          echo "===== EXTRACT EXTENSION ====="
+
           unzip -o ClipboardBridge_v2_Final.zip
 
-          echo "===== PROJECT ====="
-          find ClipboardBridge_Final -maxdepth 6 -type f -print | sort
+          echo "===== PROJECT FILES ====="
 
+          find ClipboardBridge_Final \
+            -maxdepth 8 \
+            -type f \
+            -print \
+            | sort
+
+
+      # =========================================
+      # 5. PREPARE FAST PROJECT
+      # =========================================
       - name: Prepare FAST Project
         shell: bash
         run: |
@@ -84,64 +126,127 @@ jobs:
 
           cd ClipboardBridge_Final
 
+          echo "===== CREATE SOURCE DIRECTORY ====="
+
           mkdir -p src
 
+
+          # -----------------------------------------
+          # Move manifest
+          # -----------------------------------------
           if [ -f AndroidManifest.xml ]; then
             mv AndroidManifest.xml src/AndroidManifest.xml
           fi
 
+
+          # -----------------------------------------
+          # Move resources
+          # -----------------------------------------
           if [ -d res ]; then
             mv res src/res
           fi
 
+
+          # =========================================
+          # FIX ANDROID MANIFEST
+          # =========================================
           echo "===== FIX MANIFEST ====="
 
           python3 - <<'PY'
           from pathlib import Path
 
           manifest = Path("src/AndroidManifest.xml")
+
+          if not manifest.exists():
+              raise SystemExit("ERROR: AndroidManifest.xml not found!")
+
           text = manifest.read_text()
 
           package_name = "com.example.clipboardbridge"
 
-          if 'package=' not in text:
+          if "package=" not in text:
               text = text.replace(
-                  '<manifest',
+                  "<manifest",
                   '<manifest package="' + package_name + '"',
                   1
               )
 
           manifest.write_text(text)
 
+          print("===== FINAL MANIFEST =====")
           print(manifest.read_text())
           PY
 
+
+          # =========================================
+          # FIX JAVA SOURCE
+          # =========================================
           echo "===== FIX JAVA ANNOTATION ====="
 
           python3 - <<'PY'
           from pathlib import Path
 
-          java = Path("src/com/example/clipboardbridge/ClipboardBridge.java")
+          java = Path(
+              "src/com/example/clipboardbridge/ClipboardBridge.java"
+          )
+
+          if not java.exists():
+              raise SystemExit(
+                  "ERROR: ClipboardBridge.java not found!"
+              )
+
           text = java.read_text()
 
-          # FAST 6.4+ removed SimpleObject from AndroidRuntime.jar.
-          # Replace old annotation with FAST's Component annotation.
 
+          # -----------------------------------------
+          # Remove old SimpleObject import
+          # -----------------------------------------
           text = text.replace(
               "import com.google.appinventor.components.annotations.SimpleObject;",
-              "import com.google.appinventor.components.annotations.Component;"
+              ""
           )
 
+
+          # -----------------------------------------
+          # Remove old SimpleObject annotation
+          # -----------------------------------------
           text = text.replace(
               "@SimpleObject(external = true)",
-              "@Component(external = true)"
+              ""
           )
+
+
+          # -----------------------------------------
+          # Remove Component import if previous
+          # workflow inserted it
+          # -----------------------------------------
+          text = text.replace(
+              "import com.google.appinventor.components.annotations.Component;",
+              ""
+          )
+
+
+          # -----------------------------------------
+          # Remove Component annotation if previous
+          # workflow inserted it
+          # -----------------------------------------
+          text = text.replace(
+              "@Component(external = true)",
+              ""
+          )
+
 
           java.write_text(text)
 
-          print("===== JAVA SOURCE AFTER FIX =====")
+          print("===== FINAL JAVA SOURCE =====")
           print(java.read_text())
           PY
+
+
+          # =========================================
+          # CREATE FAST CONFIG
+          # =========================================
+          echo "===== CREATE FAST.YML ====="
 
           cat > fast.yml <<'EOF'
           author: FAST
@@ -153,9 +258,22 @@ jobs:
           gen_docs: false
           EOF
 
-          echo "===== FINAL PROJECT ====="
-          find . -maxdepth 7 -type f -print | sort
 
+          # =========================================
+          # SHOW FINAL PROJECT
+          # =========================================
+          echo "===== FINAL FAST PROJECT ====="
+
+          find . \
+            -maxdepth 8 \
+            -type f \
+            -print \
+            | sort
+
+
+      # =========================================
+      # 6. SYNC EXTENSION
+      # =========================================
       - name: Sync Extension
         shell: bash
         run: |
@@ -163,40 +281,121 @@ jobs:
 
           cd ClipboardBridge_Final
 
-          java -jar "$HOME/Fast/fast.jar" sync
+          FAST_JAR=$(find "$HOME/Fast" \
+            -type f \
+            -name "fast.jar" \
+            | head -n 1)
 
+          if [ -z "$FAST_JAR" ]; then
+            echo "ERROR: fast.jar not found!"
+            exit 1
+          fi
+
+          echo "Using FAST:"
+          echo "$FAST_JAR"
+
+          java -jar "$FAST_JAR" sync
+
+
+      # =========================================
+      # 7. BUILD EXTENSION
+      # =========================================
       - name: Build Extension
+        shell: bash
+        run: |
+          set -o pipefail
+
+          cd ClipboardBridge_Final
+
+          FAST_JAR=$(find "$HOME/Fast" \
+            -type f \
+            -name "fast.jar" \
+            | head -n 1)
+
+          if [ -z "$FAST_JAR" ]; then
+            echo "ERROR: fast.jar not found!"
+            exit 1
+          fi
+
+          echo "===== FAST BUILD ====="
+
+          java -jar "$FAST_JAR" build 2>&1 | tee build.log
+
+          echo "===== CHECK BUILD RESULT ====="
+
+          if grep -q "BUILD FAILED" build.log; then
+            echo "ERROR: FAST BUILD FAILED!"
+            exit 1
+          fi
+
+          if grep -q "error:" build.log; then
+            echo "ERROR: Java compilation error detected!"
+            exit 1
+          fi
+
+          echo "FAST BUILD COMMAND FINISHED."
+
+
+      # =========================================
+      # 8. FIND AIX
+      # =========================================
+      - name: Find AIX
+        shell: bash
+        run: |
+          echo "===== ALL AIX FILES ====="
+
+          find . \
+            -type f \
+            -name "*.aix" \
+            -print
+
+          echo "===== OUT DIRECTORY ====="
+
+          if [ -d ClipboardBridge_Final/out ]; then
+            find ClipboardBridge_Final/out \
+              -maxdepth 5 \
+              -type f \
+              -print
+          else
+            echo "out directory not found."
+          fi
+
+
+      # =========================================
+      # 9. CHECK AIX
+      # =========================================
+      - name: Check AIX
         shell: bash
         run: |
           set -e
 
-          cd ClipboardBridge_Final
+          echo "===== CHECK AIX ====="
 
-          java -jar "$HOME/Fast/fast.jar" build
-
-      - name: Find AIX
-        shell: bash
-        run: |
-          echo "===== AIX FILES ====="
-
-          find . -type f -name "*.aix" -print
-
-          echo "===== OUT ====="
-
-          find ClipboardBridge_Final/out -maxdepth 3 -type f -print 2>/dev/null || true
-
-      - name: Check AIX
-        shell: bash
-        run: |
-          AIX_COUNT=$(find . -type f -name "*.aix" | wc -l)
+          AIX_COUNT=$(find . \
+            -type f \
+            -name "*.aix" \
+            | wc -l)
 
           echo "AIX COUNT: $AIX_COUNT"
 
           if [ "$AIX_COUNT" -eq 0 ]; then
             echo "ERROR: No AIX file was created!"
+            echo ""
+            echo "===== BUILD LOG ====="
+
+            if [ -f ClipboardBridge_Final/build.log ]; then
+              cat ClipboardBridge_Final/build.log
+            fi
+
             exit 1
           fi
 
+          echo "SUCCESS: AIX file created!"
+
+
+      # =========================================
+      # 10. UPLOAD AIX
+      # =========================================
       - name: Upload AIX
         uses: actions/upload-artifact@v4
         with:
