@@ -1,0 +1,43 @@
+name: Build Clipboard Extension
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install FAST
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/jewelshkjony/fast-cli/main/scripts/install/install.sh | bash
+          echo "$HOME/.fast/bin" >> "$GITHUB_PATH"
+
+      - name: Prepare Extension
+        run: |
+          cd ClipboardBridge_Final
+          fast migrate ai2 .
+
+      - name: Build AIX
+        run: |
+          cd ClipboardBridge_Final
+          fast sync build
+
+      - name: Upload AIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClipboardBridge-AIX
+          path: ClipboardBridge_Final/out/*.aix
+          if-no-files-found: error
