@@ -61,9 +61,6 @@ jobs:
 
           curl -fL "$FAST_URL" -o "$HOME/Fast/Fast.zip"
 
-          echo "===== FAST ZIP ====="
-          unzip -l "$HOME/Fast/Fast.zip"
-
           unzip -o "$HOME/Fast/Fast.zip" -d "$HOME/Fast"
 
           echo "===== FAST FILES ====="
@@ -105,6 +102,29 @@ jobs:
           if [ -d res ]; then
             mv res src/res
           fi
+
+          echo "===== ADD PACKAGE NAME ====="
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          manifest = Path("src/AndroidManifest.xml")
+
+          text = manifest.read_text()
+
+          package_name = "com.example.clipboardbridge"
+
+          if 'package=' not in text:
+              text = text.replace(
+                  '<manifest',
+                  '<manifest package="' + package_name + '"',
+                  1
+              )
+
+          manifest.write_text(text)
+
+          print(manifest.read_text())
+          PY
 
           cat > fast.yml <<'EOF'
           author: FAST
