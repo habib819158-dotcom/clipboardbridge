@@ -38,9 +38,15 @@ jobs:
           cd ClipboardBridge_Final
           java -jar "$HOME/Fast/fast.jar" sync build
 
+      - name: Find AIX
+        run: |
+          echo "Searching for AIX files..."
+          find . -type f -name "*.aix" -print
+
       - name: Upload AIX
         uses: actions/upload-artifact@v4
         with:
           name: ClipboardBridge-AIX
-          path: ClipboardBridge_Final/out/*.aix
+          path: |
+            **/*.aix
           if-no-files-found: error
