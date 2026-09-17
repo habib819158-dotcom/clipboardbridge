@@ -76,12 +76,8 @@ jobs:
             exit 1
           fi
 
-          mkdir -p "$HOME/Fast/bin"
-
-          cp "$FAST_JAR" "$HOME/Fast/fast.jar"
-
           echo "FAST JAR:"
-          ls -lh "$HOME/Fast/fast.jar"
+          ls -lh "$FAST_JAR"
 
       - name: Extract Extension
         shell: bash
