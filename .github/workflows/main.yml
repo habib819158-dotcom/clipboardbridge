@@ -28,10 +28,32 @@ jobs:
         run: |
           unzip -o ClipboardBridge_v2_Final.zip
 
-      - name: Prepare Extension
+      - name: Prepare FAST Project
         run: |
           cd ClipboardBridge_Final
-          java -jar "$HOME/Fast/fast.jar" migrate ai2 .
+
+          mkdir -p src
+
+          if [ -f AndroidManifest.xml ]; then
+            mv AndroidManifest.xml src/AndroidManifest.xml
+          fi
+
+          if [ -d res ]; then
+            mv res src/res
+          fi
+
+          cat > fast.yml <<'EOF'
+          author: FAST
+          min_sdk: 14
+          compile_sdk: 35
+          desugar_dex: true
+          proguard: false
+          R8: false
+          gen_docs: false
+          EOF
+
+          echo "===== PROJECT STRUCTURE ====="
+          find . -maxdepth 5 -type f | sort
 
       - name: Sync Extension
         run: |
@@ -47,8 +69,8 @@ jobs:
         run: |
           echo "===== AIX FILES ====="
           find . -type f -name "*.aix" -print
-          echo "===== ALL OUTPUT FILES ====="
-          find ClipboardBridge_Final -maxdepth 4 -type f | sort
+          echo "===== OUT DIRECTORY ====="
+          find ClipboardBridge_Final/out -maxdepth 2 -type f -print 2>/dev/null || true
 
       - name: Upload AIX
         uses: actions/upload-artifact@v4
