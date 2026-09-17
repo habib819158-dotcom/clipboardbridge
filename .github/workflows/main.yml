@@ -33,15 +33,22 @@ jobs:
           cd ClipboardBridge_Final
           java -jar "$HOME/Fast/fast.jar" migrate ai2 .
 
-      - name: Build AIX
+      - name: Sync Extension
         run: |
           cd ClipboardBridge_Final
-          java -jar "$HOME/Fast/fast.jar" sync build
+          java -jar "$HOME/Fast/fast.jar" sync
+
+      - name: Build Extension
+        run: |
+          cd ClipboardBridge_Final
+          java -jar "$HOME/Fast/fast.jar" build
 
       - name: Find AIX
         run: |
-          echo "Searching for AIX files..."
+          echo "===== AIX FILES ====="
           find . -type f -name "*.aix" -print
+          echo "===== ALL OUTPUT FILES ====="
+          find ClipboardBridge_Final -maxdepth 4 -type f | sort
 
       - name: Upload AIX
         uses: actions/upload-artifact@v4
